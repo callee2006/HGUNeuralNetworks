@@ -1,2 +1,6 @@
 # HGUNeuralNetworks
-Multi-layer perceptron and Autoencoder
+
+This is an implementaion of multi-layer perceptron and autoencoder written for educational purpose.
+
+
+

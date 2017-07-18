@@ -17,7 +17,7 @@
 
 class HGUNeuralNetwork {
 	int m_noLayer;
-	HGULayer *m_aLayer;		// array of HGULayers
+	HGULayer **m_aLayer;		// array of HGULayers
 	
 public:
 	HGUNeuralNetwork(){
@@ -29,17 +29,19 @@ public:
 	}
 
 	int IsAllocated() { return m_aLayer != NULL; }
-	int Alloc(int noLayer, int *pNoNode);
+	int Alloc(int noLayer, int *pNoNode, HGUNeuralNetwork *pShareSrc);
 	void Delete();
 
-	float* GetOutput()			{ return m_aLayer[m_noLayer-1].GetOutput(); }
+	float* GetOutput()			{ return m_aLayer[m_noLayer-1]->GetOutput(); }
 
 	int Propagate(float *pInput);
-	int GetMaxOutputIndex()		{ return m_aLayer[m_noLayer-1].GetMaxOutputIndex(); }
+	int GetMaxOutputIndex()		{ return m_aLayer[m_noLayer-1]->GetMaxOutputIndex(); }
 	int ComputeGradient(float *pInput, float *pDesiredOutput);
 	int UpdateWeight(float learningRate);
 
-	HGULayer& operator[] (int idx) { return m_aLayer[idx]; }
+	HGULayer* operator[] (int idx) { return m_aLayer[idx]; }
 
 	float GetError(float *pDesiredOutput);
+
+	int MergeGradient(HGUNeuralNetwork *pSrc);
 };

@@ -26,18 +26,19 @@ public:
 		m_pDecoder = NULL;
 	}
 
-	HGUAutoEncoder(int inputDim, int outputDim) : HGULayer() {
+	HGUAutoEncoder(int inputDim, int outputDim, HGULayer *pShareSrc) : HGULayer() {
 		m_pDecoder = NULL;
-		Alloc(inputDim, outputDim);
+		Alloc(inputDim, outputDim, pShareSrc);
 	}
 
 	virtual ~HGUAutoEncoder(){
 		delete m_pDecoder;
 	}
 
-	virtual int Alloc(int inputDim, int outputDim);
+	virtual int Alloc(int inputDim, int outputDim, HGULayer *pShareSrc);
 	void Delete();
 
+	HGULayer* GetDecoder()		{ return m_pDecoder; }
 	float* GetReproduction()	{ return m_pDecoder->GetOutput(); }
 	float GetReproductionError()	{ return  m_pDecoder->GetError(GetInput()); };
 
@@ -50,6 +51,9 @@ public:
 
 	void MergeGradientTranspose(float *pDest, int inputDim, int outputDim, float *pSrc);
 	void CopyWeightTranspose(float *pDest, int inputDim, int outputDim, float *pSrc);
+
+	virtual void ResetGradient();
+	virtual void MergeGradient(HGULayer *pSrc);
 };
 
 #endif // !__HGUAutoEncoder__

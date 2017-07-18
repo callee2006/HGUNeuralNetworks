@@ -30,28 +30,32 @@ HGULayer::HGULayer(){
 	m_pInput = NULL;
 	m_aOutput = NULL;
 	m_aWeight = NULL;
+	m_weightDim = 0;
+	m_bWeightShared = FALSE;
 
 	m_aGradient = NULL;
 	m_aDelta = NULL;
 	m_aDeltaBar = NULL;
 }
 
-HGULayer::HGULayer(int inputDim, int outputDim){
+HGULayer::HGULayer(int inputDim, int outputDim, HGULayer *pShareSrc){
 	m_inputDim = 0;
 	m_outputDim = 0;
 
 	m_pInput = NULL;
 	m_aOutput = NULL;
 	m_aWeight = NULL;
+	m_weightDim = 0;
+	m_bWeightShared = FALSE;
 
 	m_aGradient = NULL;
 	m_aDelta = NULL;
 	m_aDeltaBar = NULL;
 
-	Alloc(inputDim, outputDim);
+	Alloc(inputDim, outputDim, pShareSrc);
 }
 
-int HGULayer::Alloc(int inputDim, int outputDim)
+int HGULayer::Alloc(int inputDim, int outputDim, HGULayer *pShareSrc)
 {
 	if(IsAllocated())
 		Delete();
@@ -59,25 +63,41 @@ int HGULayer::Alloc(int inputDim, int outputDim)
 	m_pInput = NULL;
 	m_aOutput = new float[outputDim];
 
-	m_aWeight = new float[(inputDim + 1) * outputDim];
-	// init weights by random numbers in [-0.1, +0.1]
-	for(int w = 0; w < (inputDim + 1) * outputDim; w++)
-//		m_aWeight[w] = rand() / (float)RAND_MAX * 0.2F - 0.1F;
-		m_aWeight[w] = rand() / (float)RAND_MAX * 2.F - 1.F;
+	m_weightDim = (inputDim + 1) * outputDim;
+	if(pShareSrc == NULL){
+		try{
+			m_aWeight = new float[m_weightDim];
+		} catch(...){
+			printf("Failed to allcate memory in %s (%s %d)\n", __FUNCTION__, __FILE__, __LINE__);
+			return FALSE;
+		}
 
-	m_aGradient = new float[(inputDim + 1) * outputDim];
-	// reset gradients
-	memset(m_aGradient, 0, (inputDim + 1) * outputDim * sizeof(float));
-	m_aDelta = new float[outputDim];
-	m_aDeltaBar = new float[outputDim];
+		float range = 1.F / (float)sqrt(inputDim + 1.F);
+		// init weights by random numbers in [-0.1, +0.1]
+		for(int w = 0; w < m_weightDim; w++)
+			m_aWeight[w] = rand() / (float)RAND_MAX * 2 * range - range;
+		m_bWeightShared = FALSE;
+	} else {
+		m_aWeight = pShareSrc->GetWeight();
+		m_bWeightShared = TRUE;
+	}
 
-	if(m_aOutput == NULL || m_aWeight == NULL || m_aGradient == NULL || m_aDelta == NULL || m_aDeltaBar == NULL){
+	try {
+		m_aGradient = new float[(inputDim + 1) * outputDim];
+		m_aDelta = new float[outputDim];
+		m_aDeltaBar = new float[outputDim];
+	} catch(...){
+		if(m_bWeightShared == FALSE){
+			delete[] m_aWeight;
+			m_aWeight = NULL;
+		}
 		printf("Failed to allocate memory in %s (%s %d)\n", __FUNCTION__, __FILE__, __LINE__);
 		return FALSE;
 	}
-
+	
 	m_inputDim = inputDim;
 	m_outputDim = outputDim;
+	memset(m_aGradient, 0, (inputDim + 1) * outputDim * sizeof(float));		// reset gradients
 
 	return TRUE;
 }
@@ -90,7 +110,10 @@ void HGULayer::Delete()
 	}
 
 	if(m_aWeight){
-		delete[] m_aWeight;
+		if(m_bWeightShared == FALSE)
+			delete[] m_aWeight;
+		else
+			m_bWeightShared = FALSE;
 		m_aWeight = NULL;
 	}
 
@@ -227,4 +250,22 @@ int HGULayer::UpdateBias(float learningRate)
 	}
 
 	return TRUE;
+}
+
+void HGULayer::ResetGradient()
+{
+	memset(m_aGradient, 0, m_weightDim * sizeof(m_aGradient[0]));
+}
+
+void HGULayer::MergeGradient(HGULayer *pSrc)
+{
+	float *gSrc = pSrc->GetGradient();
+	float *gDest = m_aGradient;
+	float *gLimit = m_aGradient + m_weightDim;
+
+	for(; gDest < gLimit; gDest++, gSrc++){
+		*gDest += *gSrc;
+		*gSrc = 0.F;
+	}
+//	pSrc->ResetGradient();
 }

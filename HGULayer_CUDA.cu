@@ -29,7 +29,7 @@ void PropagateOnDevice(float *pInput, float *pWeight, int inDim, int outDim, flo
 	cudaMalloc((void**)&pDevInput, inDim * sizeof(float));
 	cudaMalloc((void**)&pDevOutput, outDim * sizeof(float));
 	cudaMalloc((void**)&pDevWeight, (inDim+1)*outDim * sizeof(float));
-	
+
 	// copy input and weight to device memory
 	cudaMemcpy(pDevInput, pInput, inDim * sizeof(float), cudaMemcpyHostToDevice);
 	cudaMemcpy(pDevWeight, pWeight, (inDim+1)*outDim * sizeof(float), cudaMemcpyHostToDevice);

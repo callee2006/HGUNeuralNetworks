@@ -23,18 +23,19 @@
 
 int FindMaxIndex(float *pArray, int size);
 
-int HGUNeuralNetwork::Alloc(int noLayer, int *pNoNode)
+int HGUNeuralNetwork::Alloc(int noLayer, int *pNoNode, HGUNeuralNetwork *pShareSrc)
 {
 	if(IsAllocated())
 		Delete();
 
-	m_aLayer = new HGULayer[noLayer];
+	m_aLayer = new HGULayer*[noLayer];
 	if(m_aLayer == NULL){
 		printf("Failed to allocate memory in %s (%s %d)\n", __FUNCTION__, __FILE__, __LINE__);
 		return FALSE;
 	}
 	for(int i = 0; i < noLayer; i++){
-		int ret = m_aLayer[i].Alloc(pNoNode[i], pNoNode[i+1]);
+		m_aLayer[i] = new HGULayer;
+		int ret = m_aLayer[i]->Alloc(pNoNode[i], pNoNode[i+1], (pShareSrc ? (*pShareSrc)[i] : NULL));
 		if(ret == FALSE){
 			printf("Failed to allocate memory in %s (%s %d)\n", __FUNCTION__, __FILE__, __LINE__);
 			delete[] m_aLayer;
@@ -51,6 +52,8 @@ int HGUNeuralNetwork::Alloc(int noLayer, int *pNoNode)
 void HGUNeuralNetwork::Delete()
 {
 	if(m_aLayer){
+		for(int i = 0; i < m_noLayer; i++)
+			delete m_aLayer[i];
 		delete[] m_aLayer;
 		m_aLayer = NULL;
 	}
@@ -64,9 +67,9 @@ int HGUNeuralNetwork::Propagate(float *pInput)
 		return FALSE;
 	}
 
-	m_aLayer[0].Propagate(pInput);
+	m_aLayer[0]->Propagate(pInput);
 	for(int i = 1; i < m_noLayer; i++)
-		m_aLayer[i].Propagate(m_aLayer[i-1].GetOutput());
+		m_aLayer[i]->Propagate(m_aLayer[i-1]->GetOutput());
 	
 	return TRUE;
 }
@@ -74,7 +77,7 @@ int HGUNeuralNetwork::Propagate(float *pInput)
 int HGUNeuralNetwork::ComputeGradient(float *pInput, float *pDesiredOutput)
 {
 	if(IsAllocated() == FALSE){
-		printf("HGUNeuralNetwork was not allocated!\n");			
+		printf("HGUNeuralNetwork was not allocated!\n");
 		return FALSE;
 	}
 
@@ -82,11 +85,11 @@ int HGUNeuralNetwork::ComputeGradient(float *pInput, float *pDesiredOutput)
 
 	for(int i = m_noLayer - 1; i >= 0; i--){
 		if(i == m_noLayer-1)
-			m_aLayer[i].ComputeDeltaBar(pDesiredOutput);
+			m_aLayer[i]->ComputeDeltaBar(pDesiredOutput);
 		else
-			m_aLayer[i+1].Backpropagate(m_aLayer[i].GetDeltaBar());
+			m_aLayer[i+1]->Backpropagate(m_aLayer[i]->GetDeltaBar());
 
-		m_aLayer[i].ComputeGradientFromDeltaBar();
+		m_aLayer[i]->ComputeGradientFromDeltaBar();
 	}
 
 	return TRUE;
@@ -100,7 +103,7 @@ int HGUNeuralNetwork::UpdateWeight(float learningRate)
 	}
 
 	for(int i = 0; i < m_noLayer; i++)
-		m_aLayer[i].UpdateWeight(learningRate);
+		m_aLayer[i]->UpdateWeight(learningRate);
 
 	return TRUE;
 }
@@ -112,5 +115,18 @@ float HGUNeuralNetwork::GetError(float *pDesiredOutput)
 		return 0.F;
 	}
 
-	return m_aLayer[m_noLayer-1].GetError(pDesiredOutput);
+	return m_aLayer[m_noLayer-1]->GetError(pDesiredOutput);
+}
+
+int HGUNeuralNetwork::MergeGradient(HGUNeuralNetwork *pSrc)
+{
+	if(IsAllocated() == FALSE || pSrc->IsAllocated()){
+		printf("HGUNeuralNetwork was not allocated!\n");			
+		return FALSE;
+	}
+
+	for(int i = 0; i < m_noLayer; i++)
+		m_aLayer[i]->MergeGradient((*pSrc)[i]);
+
+	return TRUE;
 }

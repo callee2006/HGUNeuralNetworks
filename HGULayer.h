@@ -21,12 +21,15 @@
 #endif // !TRUE
 
 class HGULayer {
+protected:
 	int m_inputDim;
 	int m_outputDim;
 
 	float *m_pInput;	// size: m_inputDim
 	float *m_aOutput;	// size: m_outputDim
 	float *m_aWeight;	// size: (m_inputDim + 1 ) * m_outputDim
+	int m_weightDim;
+	unsigned char m_bWeightShared;
 
 	// only for training
 	float *m_aGradient;	// size: (m_inputDim + 1 ) * m_outputDim
@@ -35,24 +38,26 @@ class HGULayer {
 
 public:
 	HGULayer();
-	HGULayer(int inputDim, int outputDim);
+	HGULayer(int inputDim, int outputDim, HGULayer *pShareSrc);
 	
-	virtual ~HGULayer()		{ Delete();	}
+	virtual ~HGULayer()			{ Delete();	}
 
-	int IsAllocated() { return m_aWeight != NULL; }
-	int Alloc(int inputDim, int outputDim);
+	int IsAllocated()			{ return m_aWeight != NULL; }
+	virtual int Alloc(int inputDim, int outputDim, HGULayer *pShareSrc);
 	void Delete();
 
-	int GetInputDim() { return m_inputDim; }
-	int GetOutputDim() { return m_outputDim; }
-	float* GetInput()	{ return m_pInput; }
-	float* GetOutput() { return m_aOutput; }
-	float* GetWeight() { return m_aWeight; }
-	float* GetGradient() { return m_aGradient; }
-	float* GetDeltaBar() { return m_aDeltaBar; }
+	int GetInputDim()			{ return m_inputDim; }
+	int GetOutputDim()			{ return m_outputDim; }
+	float* GetInput()			{ return m_pInput; }
+	float* GetOutput()			{ return m_aOutput; }
+	float* GetWeight()			{ return m_aWeight; }
+	float* GetGradient()		{ return m_aGradient; }
+	float* GetDeltaBar()		{ return m_aDeltaBar; }
+	int IsWeightShared()		{ return m_bWeightShared; }
+	void SetWeightShared(int flag)	{ m_bWeightShared = (unsigned char) flag; }
 
 	int Propagate(float *pInput);
-	float GetError(float *pDesiredOutput);
+	virtual float GetError(float *pDesiredOutput);
 	int GetMaxOutputIndex();
 
 	int ComputeGradient(float *pInput, float *pDesiredOutput);
@@ -66,6 +71,9 @@ public:
 	float Activation(float net)		{ return 1.F/(1.F + (float)exp(-net)); }
 	float DerActivationFromOutput(float output){ return output * (1.F-output); }
 	float DerActivation(float net)	{ return DerActivationFromOutput(Activation(net)); }
+
+	virtual void ResetGradient();
+	virtual void MergeGradient(HGULayer *pSrc);
 };
 
 void PropagateOnDevice(float *pInput, float *pWeight, int inDim, int outDim, float *pOutput);		// CUDA Code

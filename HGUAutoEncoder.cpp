@@ -21,24 +21,29 @@
 #include "HGUAutoEncoder.h"
 
 
-int HGUAutoEncoder::Alloc(int inputDim, int outputDim)
+int HGUAutoEncoder::Alloc(int inputDim, int outputDim, HGULayer *pShareSrc)
 {
-	int ret = HGULayer::Alloc(inputDim, outputDim);
+	int ret = HGULayer::Alloc(inputDim, outputDim, pShareSrc);
 
-	m_pDecoder = new HGULayer(outputDim, inputDim);
+	m_pDecoder = new HGULayer(outputDim, inputDim, pShareSrc ? ((HGUAutoEncoder*)pShareSrc)->GetDecoder() : NULL);
 	if(ret == FALSE || m_pDecoder == FALSE){
 		printf("Failed to allocate layer in %s (%s %d)\n", __FUNCTION__, __FILE__, __LINE__);
 		return FALSE;
 	}
-		
-	CopyWeightTranspose(m_pDecoder->GetWeight(), outputDim, inputDim, GetWeight());
+
+	if(pShareSrc == NULL)
+		CopyWeightTranspose(m_pDecoder->GetWeight(), outputDim, inputDim, GetWeight());
 
 	return ret;
 }
 
 void HGUAutoEncoder::Delete(){
 	if(m_pDecoder){
-		delete m_pDecoder;
+		if(m_pDecoder->IsWeightShared() == FALSE)
+			delete m_pDecoder;
+		else
+			m_pDecoder->SetWeightShared(FALSE);
+
 		m_pDecoder = NULL;
 	}
 	HGULayer::Delete();
@@ -62,9 +67,11 @@ int HGUAutoEncoder::ComputeGradient(float *pInput)
 int HGUAutoEncoder::UpdateWeight(float learningRate)
 {
 	MergeGradientTranspose(GetGradient(), GetInputDim(), GetOutputDim(), m_pDecoder->GetGradient());
+
 	HGULayer::UpdateWeight(learningRate);
 	CopyWeightTranspose(m_pDecoder->GetWeight(), GetOutputDim(), GetInputDim(), GetWeight());
 	m_pDecoder->UpdateBias(learningRate);
+
 	return TRUE;
 }
 
@@ -76,7 +83,6 @@ void HGUAutoEncoder::MergeGradientTranspose(float *pDest, int inputDim, int outp
 			pTrSrc[j * (outputDim + 1) + i] = 0.F;
 		}
 	}
-
 }
 
 void HGUAutoEncoder::CopyWeightTranspose(float *pDest, int inputDim, int outputDim, float *pTrSrc)
@@ -85,4 +91,16 @@ void HGUAutoEncoder::CopyWeightTranspose(float *pDest, int inputDim, int outputD
 		for(int j = 0; j < inputDim; j++)
 			pDest[i * (inputDim + 1) + j] = pTrSrc[j * (outputDim + 1) + i];
 	}
+}
+
+void HGUAutoEncoder::ResetGradient()
+{
+	HGULayer::ResetGradient();
+	m_pDecoder->ResetGradient();
+}
+
+void HGUAutoEncoder::MergeGradient(HGULayer *pSrc)
+{
+	HGULayer::MergeGradient(pSrc);
+	m_pDecoder->MergeGradient(((HGUAutoEncoder*)pSrc)->GetDecoder());
 }

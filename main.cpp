@@ -250,6 +250,8 @@ struct RBMThreadInfo {
 
 #ifdef WINDOWS
 DWORD WINAPI TrainRBMThreadFn(void *vpTrainInfo);
+#else	// WINDOWS
+void* TrainRBMThreadFn(void *vpTrainInfo);
 #endif // WINDOWS
 
 
@@ -303,7 +305,9 @@ int TestRBM_MT()
 #endif // WINDOWS
 		}
 
+#ifdef	WINDOWS
 		TrainRBMThreadFn(&aTrainInfo[0]);
+#endif	//	WINDOWS
 
 #ifdef WINDOWS
 		WaitForMultipleObjects(noThread - 1, &aHandle[1], TRUE, INFINITE);
@@ -355,6 +359,8 @@ int TestRBM_MT()
 
 #ifdef WINDOWS
 DWORD WINAPI TrainRBMThreadFn(void *vpTrainInfo)
+#else	// WINDOWS
+void* TrainRBMThreadFn(void *vpTrainInfo)
 #endif // WINDOWS
 {
 	RBMThreadInfo *pParam = (RBMThreadInfo*)vpTrainInfo;
@@ -368,5 +374,7 @@ DWORD WINAPI TrainRBMThreadFn(void *vpTrainInfo)
 
 #ifdef WINDOWS
 	return 0;
+#else	// WINDOWS
+	return NULL;	
 #endif	// WINDOWS
 }

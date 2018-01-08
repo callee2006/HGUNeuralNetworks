@@ -44,7 +44,7 @@ public:
 		m_aOutputClamped = NULL;
 
 		m_aGroupIndex = NULL;
-		m_noGroup = NULL;
+		m_noGroup = 0;
 	}
 
 	HGURBM(int inputDim, int outputDim, HGULayer *pShareSrc): HGULayer() {
@@ -57,7 +57,7 @@ public:
 		m_aOutputClamped = NULL;
 
 		m_aGroupIndex = NULL;
-		m_noGroup = NULL;
+		m_noGroup = 0;
 
 		Alloc(inputDim, outputDim, pShareSrc);
 	}

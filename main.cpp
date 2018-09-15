@@ -39,11 +39,11 @@ int main(int argc, char *argv[])
 {
 	srand((unsigned int)time(NULL));
 
-//	TestMLP();
+	TestMLP();
 
 //	TestAutoEncoder();
 
-	TestRBM();
+//	TestRBM();
 
 //	TestRBM_MT();
 

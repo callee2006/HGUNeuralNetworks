@@ -11,7 +11,10 @@ SRCS		=	\
 		HGUNeuralNetwork.cpp		\
 		HGURBM.cpp
 
-CUDA_SRCS = 
+ifeq ($(CUDA), ENABLE)
+CUDA_SRCS = \
+		HGULayer_CUDA.cu
+endif	# ifeq($(CUDA), ENABLE)
 
 INCLUDDES = \
 		HGUAutoEncoder.h	\
@@ -22,13 +25,22 @@ INCLUDDES = \
 OBJS		= ${SRCS:.cpp=.o}
 CUDA_OBJS	= ${CUDA_SRCS:.cu=.o}
 LIBS		= -lm
+
 CFLAGS		= -pthread -Wno-unused-result -O2 -std=c++11
+
 #DFLAGS		= -g -D_DEBUG
 DFLAGS		= -g 
 
 #-D__cplusplus
 CC		= g++
 NVCC	= nvcc
+LINKER	= g++
+
+ifeq ($(CUDA), ENABLE)
+	LINKER	= nvcc
+	CFLAGS	= -pthread -Wno-unused-result -O2 -std=c++11 -D__CUDA__
+endif	# ifeq($(CUDA), LINUX)
+
 
 INCLUDE_PATH	= -I.
 LIB_PATH= -L. -L/usr/local/cuda/lib64
@@ -39,11 +51,12 @@ all: $(PROGRAM)
 #$(OBJS):	$(SRCS) $(INCLUDES)
 $(MAINOBJ): $(MAINSRC)
 
-$(PROGRAM): $(OBJS) $(MAINOBJ)
-	$(CC) $(CFLAGS) $(DFLAGS) $(OBJS) $(MAINOBJ) $(LIBS) -o $@
 
-$(PROGRAM_CUDA): $(OBJS) $(CUDA_OBJS) $(MAINOBJ)
-	$(NVCC) $(DFLAGS) $(OBJS) $(CUDA_OBJS) $(MAINOBJ) $(LIBS) -o $@
+$(PROGRAM): $(OBJS) $(CUDA_OBJS) $(MAINOBJ)
+	$(LINKER) $(DFLAGS) $(OBJS) $(CUDA_OBJS) $(MAINOBJ) $(LIBS) -o $@
+
+#$(PROGRAM_CUDA): $(OBJS) $(CUDA_OBJS) $(MAINOBJ)
+#	$(NVCC) $(DFLAGS) $(OBJS) $(CUDA_OBJS) $(MAINOBJ) $(LIBS) -o $@
 
 .cpp.o:
 	$(CC) $(CFLAGS) $(DFLAGS) $(INCLUDE_PATH) -c $<
@@ -52,6 +65,9 @@ $(PROGRAM_CUDA): $(OBJS) $(CUDA_OBJS) $(MAINOBJ)
 	$(CC) $(CFLAGS) $(DFLAGS) $(INCLUDE_PATH) -c $<
 
 .cu.o:
+	$(NVCC) $(DFLAGS) $(INCLUDE_PATH) -c $<
+
+HGULayer_CUDA.o: HGULayer_CUDA.cu
 	$(NVCC) $(DFLAGS) $(INCLUDE_PATH) -c $<
 
 depend:

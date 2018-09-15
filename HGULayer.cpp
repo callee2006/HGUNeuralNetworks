@@ -135,14 +135,21 @@ void HGULayer::Delete()
 	m_outputDim = 0;
 }
 
+#ifdef __CUDA__
 void PropagateOnDevice(float *pInput, float *pWeight, int inDim, int outDim, float *pOutput);		// CUDA Code
+#endif // __CUDA__
+
 
 int HGULayer::Propagate(float *pInput)
 {
+
 	m_pInput = pInput;
 
 #ifdef __CUDA__
-	return PropagateOnDevice(pInput, m_aWeight, m_inputDim, m_outputDim, m_aOutput);
+	{
+		PropagateOnDevice(pInput, m_aWeight, m_inputDim, m_outputDim, m_aOutput);
+		return TRUE;
+	}
 #endif // __CUDA__
 	
 	for(int o = 0; o < m_outputDim; o++){
